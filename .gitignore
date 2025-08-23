@@ -1,3 +1,36 @@
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build products
+build/
+DerivedData/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Xcode project files
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcshareddata/
+*.xcworkspace/xcuserdata/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# User-specific files
+*.dSYM/
+*.moved-aside
+*.xccheckout
+*.xcscheme
+
+# Other
+*.app
+*.ipa
+
 # Prerequisites
 *.d
 
