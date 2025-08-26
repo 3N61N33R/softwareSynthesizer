@@ -32,6 +32,9 @@ void ofApp::setup() {
 	settings.bufferSize = 1024;
 	settings.numBuffers = 4;
 	soundStream.setup(settings);
+    
+    // allocate space for waveform visualization
+    waveform.resize(512, 0.0f);   // 512 samples
 
 }
 
@@ -87,7 +90,7 @@ void ofApp::mouseMoved(int x, int y) {
 void ofApp::audioOut(ofSoundBuffer & outBuffer) {
     
     // uncomment this line to test if audioOut is being called
-//    ofLogNotice() << "audioOut called, frames: " << outBuffer.getNumFrames();
+    // ofLogNotice() << "audioOut called, frames: " << outBuffer.getNumFrames();
     
     float phaseInc = (TWO_PI * frequency) / sampleRate;
     
@@ -123,13 +126,17 @@ void ofApp::audioOut(ofSoundBuffer & outBuffer) {
         
         localBuffer[i] = sample; // copy to local buffer
 
-        }
+    }
     
     // Copy recent samples into waveform buffer (thread-safe)
     waveformMutex.lock();
-    for (size_t i = 0; i < localBuffer.size(); i++) {
-        waveform[i % waveform.size()] = localBuffer[i];
+    
+    if (!waveform.empty()) {
+        for (size_t i = 0; i < localBuffer.size(); i++) {
+            waveform[i % waveform.size()] = localBuffer[i];
+        }
     }
+    
     waveformMutex.unlock();
     
 }
