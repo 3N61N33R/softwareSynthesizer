@@ -2,25 +2,30 @@
 
 #include "ofMain.h"
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp {
 
-	public:
-		void setup() override;
-		void update() override;
-		void draw() override;
-		void exit() override;
+public:
+	void setup() override;
+	void update() override;
+	void draw() override;
 
-		void keyPressed(int key) override;
-		void keyReleased(int key) override;
-		void mouseMoved(int x, int y ) override;
-		void mouseDragged(int x, int y, int button) override;
-		void mousePressed(int x, int y, int button) override;
-		void mouseReleased(int x, int y, int button) override;
-		void mouseScrolled(int x, int y, float scrollX, float scrollY) override;
-		void mouseEntered(int x, int y) override;
-		void mouseExited(int x, int y) override;
-		void windowResized(int w, int h) override;
-		void dragEvent(ofDragInfo dragInfo) override;
-		void gotMessage(ofMessage msg) override;
-		
+    void keyPressed(int key) override; // <-- handle keyboard
+    void mouseMoved(int x, int y) override;   // <-- add mouse control
+	void audioOut(ofSoundBuffer & outBuffer) override;
+
+	ofSoundStream soundStream;
+
+	// Synth statetest tone
+	float phase = 0.0f;
+	float frequency = 440.0f;
+	float sampleRate = 48000;
+    float amplitude = 0.2f;
+    
+    int waveformType = 0; // 0 = sine, 1 = square, 2 = sawtooth
+    
+    // Visualization
+    std::vector<float> waveform; // stores recent samples
+    int waveformSize = 1024;     // number of samples to keep
+    std::mutex waveformMutex;    // protect waveform buffer
+
 };
