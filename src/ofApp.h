@@ -1,31 +1,42 @@
 #pragma once
 
 #include "ofMain.h"
+#include <map>
 
-class ofApp : public ofBaseApp {
+// A structure to hold the properties of a single active note
+struct Note
+{
+	int waveformType; // 0: Sine, 1: Square, 2: Sawtooth
+	float frequency;
+	float amplitude;
+	float phase;
+};
+
+class ofApp : public ofBaseApp
+{
 
 public:
 	void setup() override;
 	void update() override;
 	void draw() override;
 
-    void keyPressed(int key) override; // <-- handle keyboard
-    void mouseMoved(int x, int y) override;   // <-- add mouse control
-	void audioOut(ofSoundBuffer & outBuffer) override;
+	void keyPressed(int key) override;
+	void keyReleased(int key) override;
+	void audioOut(ofSoundBuffer &outBuffer) override;
 
 	ofSoundStream soundStream;
 
-	// Synth statetest tone
-	float phase = 0.0f;
-	float frequency = 440.0f;
 	float sampleRate = 48000;
-    float amplitude = 0.2f;
-    
-    int waveformType = 0; // 0 = sine, 1 = square, 2 = sawtooth
-    
-    // Visualization
-    std::vector<float> waveform; // stores recent samples
-    int waveformSize = 1024;     // number of samples to keep
-    std::mutex waveformMutex;    // protect waveform buffer
 
+	// Use a map to store currently active notes (keyed by the keyboard key)
+	// This allows for polyphony
+	std::map<int, Note> activeNotes;
+	std::mutex audioMutex; // Protects activeNotes
+
+	// Key-to-frequency mapping
+	std::map<int, float> keyFrequencies;
+
+	// Visualization
+	std::vector<float> waveformBuffer; // stores recent samples for drawing
+	int waveformBufferSize = 512;
 };
