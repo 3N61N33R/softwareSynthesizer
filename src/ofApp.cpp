@@ -1,142 +1,197 @@
 #include "ofApp.h"
 
+// Helper function to map a key to a waveform type based on its row
+int getWaveformForRow(int key)
+{
+    // Top row (QWERTY...) -> Sawtooth
+    if (string("qwertyuiop").find(tolower(key)) != string::npos)
+        return 2;
+    // Middle row (ASDF...) -> Square
+    if (string("asdfghjkl").find(tolower(key)) != string::npos)
+        return 1;
+    // Bottom row (ZXCVB...) -> Sine
+    if (string("zxcvbnm").find(tolower(key)) != string::npos)
+        return 0;
+    return -1; // Not a valid key
+}
+
 //--------------------------------------------------------------
-void ofApp::setup() {
-    ofSetWindowTitle("Minimal Synth Test");
-    
-	ofSetFrameRate(60);
-	ofBackground(0);
+void ofApp::setup()
+{
+    ofSetWindowTitle("The Chromatic Typewriter");
+    ofSetFrameRate(60);
+    ofBackground(30, 30, 50); // A darker, more stylish background
 
-	//  setup audio stream
-	ofSoundStreamSettings settings;
-
-	auto devices = soundStream.getDeviceList();
-    
-    // Print available devices
-        for (auto & d : devices) {
-            ofLogNotice() << d;
-        }
-    
-    // Find "Built-in Output"
-    for (auto & d : devices) {
-        if (d.deviceID == 130) {
-            settings.setOutDevice(d);
-            ofLogNotice() << "Using device: " << d.name;
-        }
+    // --- Setup Key-to-Frequency Map ---
+    // A simple chromatic scale starting from C3
+    float baseFreq = 130.81f; // C3
+    string allKeys = "zxcvbnmasdfghjklqwertyuiop";
+    for (int i = 0; i < allKeys.length(); i++)
+    {
+        keyFrequencies[allKeys[i]] = baseFreq * pow(2.0, i / 12.0);
     }
 
-	settings.setOutListener(this);
-	settings.numOutputChannels = 2; // stereo output
-	settings.numInputChannels = 0;
-	settings.sampleRate = sampleRate;
-	settings.bufferSize = 1024;
-	settings.numBuffers = 4;
-	soundStream.setup(settings);
-    
-    // allocate space for waveform visualization
-    waveform.resize(512, 0.0f);   // 512 samples
+    // --- Setup Audio Stream ---
+    ofSoundStreamSettings settings;
+    settings.setOutListener(this);
+    settings.numOutputChannels = 2;
+    settings.numInputChannels = 0;
+    settings.sampleRate = sampleRate;
+    settings.bufferSize = 512;
+    settings.numBuffers = 4;
+    soundStream.setup(settings);
 
+    // Allocate space for waveform visualization
+    waveformBuffer.resize(waveformBufferSize, 0.0f);
 }
 
 //--------------------------------------------------------------
-void ofApp::update() {
+void ofApp::update()
+{
+    // No logic needed here for this version
 }
 
 //--------------------------------------------------------------
-void ofApp::draw() {
-	ofSetColor(255);
-    ofDrawBitmapString("Press 1 = sine, 2 = square, 3 = sawtooth", 20, 20);
+void ofApp::draw()
+{
+    ofSetColor(255);
+    ofDrawBitmapString("The Chromatic Typewriter", 20, 30);
 
-    string waveName = (waveformType == 0 ? "SINE" : (waveformType == 1 ? "SQUARE" : "SAWTOOTH"));
-    ofDrawBitmapString("Current waveform: " + waveName, 20, 50);
-    
-    ofDrawBitmapString("Move mouse horizontally to change pitch (freq)", 20, 80);
-    ofDrawBitmapString("Move mouse vertically to change volume", 20, 100);
+    ofSetColor(200);
+    ofDrawBitmapString("Top Row (QWERTY): Sawtooth Wave", 20, 60);
+    ofDrawBitmapString("Mid Row (ASDF):  Square Wave", 20, 80);
+    ofDrawBitmapString("Bot Row (ZXCV):  Sine Wave", 20, 100);
+    ofDrawBitmapString("Play multiple keys at once!", 20, 120);
 
-    ofDrawBitmapString("Frequency: " + ofToString(frequency, 2) + " Hz", 20, 140);
-    ofDrawBitmapString("Amplitude: " + ofToString(amplitude, 2), 20, 160);
-    
-    // Draw waveform
-    waveformMutex.lock();
+    // --- Draw Active Notes ---
+    ofSetColor(255, 255, 0);
+    string activeNotesStr = "Playing: ";
+    audioMutex.lock();
+    for (auto const &[key, val] : activeNotes)
+    {
+        activeNotesStr += (char)key;
+        activeNotesStr += " ";
+    }
+    audioMutex.unlock();
+    ofDrawBitmapString(activeNotesStr, 20, 160);
+
+    // --- Draw Waveform Visualization ---
     ofNoFill();
-    ofSetColor(0, 255, 100);
+    ofSetColor(100, 255, 150);
+    ofSetLineWidth(2);
     ofBeginShape();
-    
-    for (int i = 0; i < waveform.size(); i++) {
-        float x = ofMap(i, 0, waveform.size(), 0, ofGetWidth());
-        float y = ofMap(waveform[i], -1.0, 1.0, ofGetHeight()/2 + 100, ofGetHeight()/2 - 100);
+    audioMutex.lock();
+    for (int i = 0; i < waveformBuffer.size(); i++)
+    {
+        float x = ofMap(i, 0, waveformBuffer.size() - 1, 0, ofGetWidth());
+        float y = ofMap(waveformBuffer[i], -1.0, 1.0, ofGetHeight() * 0.75, ofGetHeight() * 0.25);
         ofVertex(x, y);
     }
+    audioMutex.unlock();
     ofEndShape(false);
-    waveformMutex.unlock();
-    
 }
 
-void ofApp::keyPressed(int key) {
-    if (key == '1') waveformType = 0;
-    else if (key == '2') waveformType = 1;
-    else if (key == '3') waveformType = 2;
-}
-
-void ofApp::mouseMoved(int x, int y) {
-    // Map X position to frequency range (C2 ~ 65 Hz up to C7 ~ 2000 Hz)
-    frequency = ofMap(x, 0, ofGetWidth(), 65.0f, 2000.0f, true);
-
-    // Map Y position to amplitude (top loud = 1.0, bottom quiet = 0.0)
-    amplitude = ofMap(y, 0, ofGetHeight(), 1.0f, 0.0f, true);
-}
-
-
-void ofApp::audioOut(ofSoundBuffer & outBuffer) {
-    
-    // uncomment this line to test if audioOut is being called
-    // ofLogNotice() << "audioOut called, frames: " << outBuffer.getNumFrames();
-    
-    float phaseInc = (TWO_PI * frequency) / sampleRate;
-    
-    std::vector<float> localBuffer(outBuffer.getNumFrames());
-    
-    for (size_t i = 0; i < outBuffer.getNumFrames(); i++) {
-        float sample = sin(phase);
-        
-        // Generate waveform depending on type
-        if (waveformType == 0) {
-            // Sine
-            sample = sin(phase);
-                }
-        else if (waveformType == 1) {
-            // Square
-            sample = (sin(phase) > 0 ? 1.0f : -1.0f);
-                }
-        else if (waveformType == 2) {
-            // Sawtooth
-            sample = fmod(phase / TWO_PI, 1.0f) * 2.0f - 1.0f;
-                }
-        
-        // advance phase
-        phase += phaseInc;
-        if (phase > TWO_PI) phase -= TWO_PI;
-        
-        // reduce gain to avoid clipping
-        sample *= amplitude;
-        
-        // stereo: same sample in L and R
-        outBuffer[i * 2]  = sample; // left
-        outBuffer[i * 2 + 1] = sample; // right
-        
-        localBuffer[i] = sample; // copy to local buffer
-
-    }
-    
-    // Copy recent samples into waveform buffer (thread-safe)
-    waveformMutex.lock();
-    
-    if (!waveform.empty()) {
-        for (size_t i = 0; i < localBuffer.size(); i++) {
-            waveform[i % waveform.size()] = localBuffer[i];
+//--------------------------------------------------------------
+void ofApp::keyPressed(int key)
+{
+    int lowerKey = tolower(key);
+    if (keyFrequencies.count(lowerKey))
+    {
+        int waveformType = getWaveformForRow(lowerKey);
+        if (waveformType != -1)
+        {
+            std::lock_guard<std::mutex> lock(audioMutex);
+            if (activeNotes.find(lowerKey) == activeNotes.end())
+            {
+                // Key is not already playing, so add it
+                Note newNote;
+                newNote.waveformType = waveformType;
+                newNote.frequency = keyFrequencies[lowerKey];
+                newNote.amplitude = 0.5f; // Fixed amplitude for now
+                newNote.phase = 0.0f;
+                activeNotes[lowerKey] = newNote;
+            }
         }
     }
-    
-    waveformMutex.unlock();
-    
+}
+
+//--------------------------------------------------------------
+void ofApp::keyReleased(int key)
+{
+    int lowerKey = tolower(key);
+    if (keyFrequencies.count(lowerKey))
+    {
+        std::lock_guard<std::mutex> lock(audioMutex);
+        activeNotes.erase(lowerKey); // Remove the note for the released key
+    }
+}
+
+//--------------------------------------------------------------
+void ofApp::audioOut(ofSoundBuffer &outBuffer)
+{
+    float phaseInc;
+    float sample;
+
+    std::lock_guard<std::mutex> lock(audioMutex);
+
+    // Zero out the buffer initially
+    for (size_t i = 0; i < outBuffer.getNumFrames(); i++)
+    {
+        outBuffer[i * 2] = 0;
+        outBuffer[i * 2 + 1] = 0;
+    }
+
+    // If there are no notes, we don't need to do anything else
+    if (activeNotes.empty())
+    {
+        // Fill visualization buffer with silence
+        for (size_t i = 0; i < waveformBuffer.size(); i++)
+        {
+            waveformBuffer[i] = 0.0f;
+        }
+        return;
+    }
+
+    // Iterate through all active notes and add their sound to the buffer
+    for (auto it = activeNotes.begin(); it != activeNotes.end(); ++it)
+    {
+        Note &note = it->second;
+        phaseInc = (TWO_PI * note.frequency) / sampleRate;
+
+        for (size_t i = 0; i < outBuffer.getNumFrames(); i++)
+        {
+            // Generate sample based on waveform type
+            switch (note.waveformType)
+            {
+            case 0: // Sine
+                sample = sin(note.phase);
+                break;
+            case 1: // Square
+                sample = (sin(note.phase) > 0) ? 1.0f : -1.0f;
+                break;
+            case 2: // Sawtooth
+                sample = fmod(note.phase / TWO_PI, 1.0f) * 2.0f - 1.0f;
+                break;
+            default:
+                sample = 0;
+                break;
+            }
+
+            note.phase += phaseInc;
+            if (note.phase > TWO_PI)
+                note.phase -= TWO_PI;
+
+            // Add the sample to the buffer (mix it in)
+            // We divide by the number of notes to prevent clipping
+            sample *= (note.amplitude / activeNotes.size());
+            outBuffer[i * 2] += sample;     // Left channel
+            outBuffer[i * 2 + 1] += sample; // Right channel
+        }
+    }
+
+    // Copy the final mixed buffer to the visualization buffer
+    for (size_t i = 0; i < outBuffer.getNumFrames() && i < waveformBuffer.size(); i++)
+    {
+        waveformBuffer[i] = outBuffer[i * 2]; // Just copy the left channel
+    }
 }
